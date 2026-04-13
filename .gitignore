@@ -1,0 +1,26 @@
+# ─── Python ─────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ─── Virtual Environment ────────────────
+venv/
+.env/
+
+# ─── Environment Variables ──────────────
+.env
+
+# ─── Audio Files (temporary) ────────────
+*.wav
+*.mp3
+voice/temp/
+
+# ─── MacOS junk ─────────────────────────
+.DS_Store
+
+# ─── Logs / temp ────────────────────────
+*.log
+*.tmp
+
+models/
