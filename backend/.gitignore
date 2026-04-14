@@ -1,28 +1,26 @@
 # ─── Python ─────────────────────────────
-backend__pycache__/
-backend*.pyc
-backend*.pyo
-backend*.pyd
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # ─── Virtual Environment ────────────────
-backend.env/
+venv/
+.env/
 
 # ─── Environment Variables ──────────────
-backend.env
+.env
 
+# ─── Audio Files (temporary) ────────────
+*.wav
+*.mp3
+voice/temp/
+
+# ─── MacOS junk ─────────────────────────
+.DS_Store
 
 # ─── Logs / temp ────────────────────────
 *.log
 *.tmp
 
 models/
-# Python
-backend/venv/
-backend/audio_responses/
-
-# Frontend
-frontend/node_modules/
-
-# General
-.DS_Store
-*.wav
