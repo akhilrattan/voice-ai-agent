@@ -1,26 +1,28 @@
 # ─── Python ─────────────────────────────
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+voice-agent-backend__pycache__/
+voice-agent-backend*.pyc
+voice-agent-backend*.pyo
+voice-agent-backend*.pyd
 
 # ─── Virtual Environment ────────────────
-venv/
-.env/
+voice-agent-backend.env/
 
 # ─── Environment Variables ──────────────
-.env
+voice-agent-backend.env
 
-# ─── Audio Files (temporary) ────────────
-*.wav
-*.mp3
-voice/temp/
-
-# ─── MacOS junk ─────────────────────────
-.DS_Store
 
 # ─── Logs / temp ────────────────────────
 *.log
 *.tmp
 
 models/
+# Python
+voice-agent-backend/venv/
+voice-agent-backend/audio_responses/
+
+# Frontend
+voice-agent-frontend/node_modules/
+
+# General
+.DS_Store
+*.wav
