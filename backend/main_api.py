@@ -105,10 +105,11 @@ def chat_text(input: TextInput):
 @app.post("/chat/voice")
 async def chat_voice(audio : UploadFile = File(...)):
     """handles voice input-- need for transcribing"""
-    if audio.content_type not in ["audio/wav", "audio/wave", "audio/webm", "audio/mp4", "application/octet-stream"]:
+    if audio.content_type not in ["audio/wav", "audio/wave", "audio/webm", "audio/mp4", "audio/ogg", "application/octet-stream"]:
         logger.warning(f"Unexpected content type: {audio.content_type} — attempting anyway")
     logger.info(f"voice upload recieved: {audio.filename}({audio.content_type})")
-    upload_path = f"audio_responses/uplaod_{uuid.uuid4()}.wav"
+    upload_extension = os.path.splitext(audio.filename or "")[1].lower() or ".webm"
+    upload_path = f"audio_responses/upload_{uuid.uuid4()}{upload_extension}"
 
     try:
         with open(upload_path, "wb") as f:

@@ -52,7 +52,7 @@ def listen():
         return ""
 
     try:
-        text = transcribe()
+        text = transcribe(TEMP_FILE)
     except Exception as e:
         print(f"Transcription failed: {e}")
         return ""

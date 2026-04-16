@@ -289,6 +289,95 @@
     ></textarea>
     <button id="send-btn" title="Send">↑</button>
   </div>
+<script>
+const API = "http://127.0.0.1:8000";
 
+// ── DOM REFERENCES ──────────────────────────────────────────────────────────
+const chatWindow   = document.getElementById("chat-window");
+const textInput    = document.getElementById("text-input");
+const sendBtn      = document.getElementById("send-btn");
+const micBtn       = document.getElementById("mic-btn");
+const loadBtn      = document.getElementById("load-btn");
+const filePathInput= document.getElementById("file-path-input");
+const statusDot    = document.getElementById("status-dot");
+
+// ── STATE ───────────────────────────────────────────────────────────────────
+let mediaRecorder = null;
+let audioChunks   = [];
+let isRecording   = false;
+
+function addMessage(text,role){
+  const div = document.createElement("div");
+  div.className = `message ${role}`;
+  div.textContent = text;
+  chatWindow.appendChild(div);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+  return div;
+}
+function addThinking(){
+  const div = document.createElement("div");
+  div.className = "thinking";
+  div.id = "thinking";
+  div.innerHTML ="<span></span><span></span><span></span>";
+  chatWindow.appendChild(div);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+function removeThinking(){
+  const t = document.getElementById("thinking");
+  if (t) t.remove();
+}
+function  playAudio(url){
+  const audio = new Audio(API + url);
+  audio.play();
+
+}
+async function checkHealth(){
+  try{
+    const res = await fetch(`${API}/status`);
+    if (res.ok) statusDot.classList.remove("offline");
+  }
+  catch{
+    statusDot.classList.add("offline")
+  }
+}
+
+//send text 
+
+async function sendText() {
+  const message = textInput.value.trim();
+  if(!message){
+    return;
+  }  
+  addMessage(message, "user");
+  textInput.value = "";
+  addThinking();
+
+  try{
+    const res = await fetch(`${API}/chat/text`,{
+      method : "POST",
+      headers : "application/json",
+      body : JSON.stringify({message})
+    })
+    const data = await res.json();
+    removeThinking();
+    if(data.status === "ok"){
+      addMessage(data.reply , "Joi");
+      if(data.audio_url){
+        playAudio(data.audio_url);
+      }
+    }
+    else{
+        addMessage("something went wrong", "system");
+    }
+    
+  }
+  catch(e){
+    removeThinking();
+    addMessage("could not reach Joi, check serer", "system");
+  }
+}
+
+
+</script>
 </body>
 </html>
