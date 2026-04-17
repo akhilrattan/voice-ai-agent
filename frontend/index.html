@@ -355,7 +355,7 @@ async function sendText() {
   try{
     const res = await fetch(`${API}/chat/text`,{
       method : "POST",
-      headers : "application/json",
+      headers: { "Content-Type": "application/json" },
       body : JSON.stringify({message})
     })
     const data = await res.json();
@@ -377,7 +377,93 @@ async function sendText() {
   }
 }
 
+async function sendVoice(blob) {
+  addThinking();
+  const formdata = new FormData();
+  formdata.append("audio", blob, "recording.wav");
+  
+  try{
+    const res = await fetch(`${API}/chat/voice`,{
+      method : POST,
+      body: formdata
+    })
+    const data =  await res.json();
+    removeThinking();
+    if(data.status === "ok"){
+      addMessage(data.user_text,"user");
+      addMessage(data.reply, "Joi");
+      if(data.audio_url)playAudio(audio_url);
+    }
+    else{
+      addMessage(data.detail || "some error occured", "system");
+    }
+  }
+  catch(e){
+    removeThinking();
+    addMessage("voice request failed", "system");
+  }
+}
+async function startRecording() {
+  const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
+  mediaRecorder.onstop = () =>{
+    const blob = new Blob(audioChunks, {type : "audio/wav"});
+    sendVoice(blob);
+    stream.getTracks().forEach(t => t.stop());
+  };
+  mediaRecorder.start();
+  isRecording = true;
+  micBtn.classList.add = "recording";
+  micBtn.textContent = "⏹";
+}
+function stopRecording() {
+  mediaRecorder.stop();
+  isRecording = false;
+  micBtn.classList.remove("recording");
+  micBtn.textContent = "🎤";
+}
+async function loadDocument() {
+  const filepath = filePathInput.value.trim();
+  const label = filepath.split("/").pop().replace(".pdf","");
+  if(!filepath)return;
+  try{
+    const res = await fetch(`${API}/load-document`,{
+      method: POST,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({filepath,label})
+    })
+    const data = await res.json();
+    addMessage(data.detail||data.message,"system");
+    filePathInput.value = "";
+  }
+  catch(e){
+    addMessage("failed to load the document", "system");
+  }
+}
+// ── EVENT LISTENERS ──────────────────────────────────────────────────────────
+sendBtn.addEventListener("click", sendText);
+
+textInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendText();
+  }
+});
+
+micBtn.addEventListener("click", () => {
+  isRecording ? stopRecording() : startRecording();
+});
+
+loadBtn.addEventListener("click", loadDocument);
+
+// Auto-resize textarea
+textInput.addEventListener("input", () => {
+  textInput.style.height = "auto";
+  textInput.style.height = textInput.scrollHeight + "px";
+});
 </script>
 </body>
 </html>
