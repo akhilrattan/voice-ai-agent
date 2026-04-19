@@ -24,6 +24,8 @@ logging.basicConfig(
     datefmt="%H:%M:%S"
 )
 logger = logging.getLogger(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+AUDIO_DIR = os.path.join(BASE_DIR, "audio_responses")
 
 # ── APP SETUP ─────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -43,9 +45,9 @@ app.add_middleware(
 
 # Serve audio files as static files
 #creates the folder if it doesn't exist. exist_ok=True means don't throw an error if it already exists. Always use this when your code depends on a folder existing.
-os.makedirs("audio_responses", exist_ok=True)
+os.makedirs(AUDIO_DIR, exist_ok=True)
 #StaticFiles — mounts a folder as a static file server. Anything in audio_responses/ is now accessible at /audio/filename.wav. The browser can fetch it directly with a URL.
-app.mount("/audio", StaticFiles(directory="audio_responses"), name="audio")
+app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")
 
 app.middleware("http")
 async def log_request(request, call_next):
@@ -87,9 +89,9 @@ def chat_text(input: TextInput):
 
     try:
         reply = get_reply_non_streaming(input.message)
-        filename = f"audio_responses/{uuid.uuid4()}.wav"
+        filename = os.path.join(AUDIO_DIR, f"{uuid.uuid4()}.wav")
  #uuid.uuid4() — generates a unique random ID like a3f8c2d1-.... You use it for filenames so two simultaneous users don't overwrite each other's audio files. Essential for any multi-user system
-        audio_path = generate_audio(reply,filename)
+        audio_path = generate_audio(reply, filename)
         logger.info(f"reply generated : '{reply[:50]}'")
         return{
             "user_input": input.message,
@@ -108,7 +110,7 @@ async def chat_voice(audio : UploadFile = File(...)):
     if audio.content_type not in ["audio/wav", "audio/wave", "audio/webm", "audio/mp4", "application/octet-stream"]:
         logger.warning(f"Unexpected content type: {audio.content_type} — attempting anyway")
     logger.info(f"voice upload recieved: {audio.filename}({audio.content_type})")
-    upload_path = f"audio_responses/uplaod_{uuid.uuid4()}.wav"
+    upload_path = os.path.join(AUDIO_DIR, f"upload_{uuid.uuid4()}.wav")
 
     try:
         with open(upload_path, "wb") as f:
@@ -123,7 +125,7 @@ async def chat_voice(audio : UploadFile = File(...)):
         
         reply = get_reply_non_streaming(user_text)
 
-        response_filename = f"audio_responses/{uuid.uuid4()}.wav"
+        response_filename = os.path.join(AUDIO_DIR, f"{uuid.uuid4()}.wav")
         audio_path = generate_audio(reply, response_filename)
         logger.info(f"Reply: '{reply[:50]}'")
 
@@ -166,11 +168,11 @@ async def ld_doc(input : LoadDocInput):
 def cleanup_audio():
     """delete all the previos audios generated"""
     try:
-        list = os.listdir("audio_responses")
-        for f in list:
+        files = os.listdir(AUDIO_DIR)
+        for f in files:
             if f.endswith(".wav"):
-                os.remove(f"audio_responses/{f}")
-        logger.info(f"cleaned up {len(list)} audio files")
-        return{"deleted": len(list), "status": "ok"}
+                os.remove(os.path.join(AUDIO_DIR, f))
+        logger.info(f"cleaned up {len(files)} audio files")
+        return{"deleted": len(files), "status": "ok"}
     except Exception as e:
         raise HTTPException(status_code = 500, detail =str(e))

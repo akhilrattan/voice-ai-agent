@@ -276,19 +276,21 @@
       id="file-path-input"
       placeholder="/path/to/document.pdf"
     />
-    <button id="load-btn">Load doc</button>
+    <button id="load-btn" type="button">Load doc</button>
   </div>
 
   <!-- INPUT BAR -->
+  <form id="chat-form" onsubmit="return false;">
   <div id="input-bar">
-    <button id="mic-btn" title="Hold to record">🎤</button>
+    <button id="mic-btn" type="button" title="Hold to record">🎤</button>
     <textarea
       id="text-input"
       placeholder="Type a message or press the mic..."
       rows="1"
     ></textarea>
-    <button id="send-btn" title="Send">↑</button>
+    <button id="send-btn" type="button" title="Send">↑</button>
   </div>
+</form>
 <script>
 const API = "http://127.0.0.1:8000";
 
@@ -306,145 +308,204 @@ let mediaRecorder = null;
 let audioChunks   = [];
 let isRecording   = false;
 
-function addMessage(text,role){
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+function addMessage(text, role) {
   const div = document.createElement("div");
   div.className = `message ${role}`;
-  div.textContent = text;
+
+  const content = document.createElement("span");
+  content.textContent = text;
+
+  if (role !== "system") {
+    const time = document.createElement("div");
+    time.style.cssText = "font-size:11px; opacity:0.4; margin-top:4px;";
+    time.textContent = new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+    div.appendChild(content);
+    div.appendChild(time);
+  } else {
+    div.appendChild(content);
+  }
+
   chatWindow.appendChild(div);
   chatWindow.scrollTop = chatWindow.scrollHeight;
   return div;
 }
-function addThinking(){
+function addThinking() {
   const div = document.createElement("div");
   div.className = "thinking";
   div.id = "thinking";
-  div.innerHTML ="<span></span><span></span><span></span>";
+  div.innerHTML = "<span></span><span></span><span></span>";
   chatWindow.appendChild(div);
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
-function removeThinking(){
+
+function removeThinking() {
   const t = document.getElementById("thinking");
   if (t) t.remove();
 }
-function  playAudio(url){
+
+function playAudio(url) {
   const audio = new Audio(API + url);
-  audio.play();
-
+  audio.play().catch(() => {
+    // Browser blocked autoplay — add a play button instead
+    const playBtn = document.createElement("button");
+    playBtn.textContent = "▶ Play response";
+    playBtn.style.cssText = `
+      background: #1e1e2e;
+      border: 1px solid #4f46e5;
+      color: #a78bfa;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      margin-top: 6px;  
+      align-self: flex-start;
+    `;
+    playBtn.onclick = () => { audio.play(); playBtn.remove(); };
+    chatWindow.appendChild(playBtn);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  });
 }
-async function checkHealth(){
-  try{
-    const res = await fetch(`${API}/status`);
-    if (res.ok) statusDot.classList.remove("offline");
-  }
-  catch{
-    statusDot.classList.add("offline")
-  }
+
+function setLoading(on) {
+  sendBtn.disabled = on;
+  micBtn.disabled  = on;
+  sendBtn.style.opacity = on ? "0.4" : "1";
+  micBtn.style.opacity  = on ? "0.4" : "1";
 }
 
-//send text 
+// ── CHECK API HEALTH ────────────────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const res = await fetch(`${API}/health`);
+    statusDot.classList.toggle("offline", !res.ok);
+  } catch {
+    statusDot.classList.add("offline");
+  }
+}
+checkHealth();
 
+// ── SEND TEXT ───────────────────────────────────────────────────────────────
 async function sendText() {
   const message = textInput.value.trim();
-  if(!message){
-    return;
-  }  
+  if (!message) return;
+
   addMessage(message, "user");
   textInput.value = "";
   addThinking();
+  setLoading(true);
 
-  try{
-    const res = await fetch(`${API}/chat/text`,{
-      method : "POST",
+  try {
+    const res = await fetch(`${API}/chat/text`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body : JSON.stringify({message})
-    })
+      body: JSON.stringify({ message })
+    });
+
     const data = await res.json();
     removeThinking();
-    if(data.status === "ok"){
-      addMessage(data.reply , "Joi");
-      if(data.audio_url){
-        playAudio(data.audio_url);
-      }
+    setLoading(false);
+
+    if (data.status === "ok") {
+      addMessage(data.reply, "joi");
+      if (data.audio_url) playAudio(data.audio_url);
+    } else {
+      addMessage("Something went wrong. Try again.", "system");
     }
-    else{
-        addMessage("something went wrong", "system");
-    }
-    
-  }
-  catch(e){
+  } catch (e) {
     removeThinking();
-    addMessage("could not reach Joi, check serer", "system");
+    addMessage("Could not reach Joi. Is the server running?", "system");
   }
 }
 
+// ── SEND VOICE ───────────────────────────────────────────────────────────────
 async function sendVoice(blob) {
   addThinking();
-  const formdata = new FormData();
-  formdata.append("audio", blob, "recording.wav");
-  
-  try{
-    const res = await fetch(`${API}/chat/voice`,{
-      method : POST,
-      body: formdata
-    })
-    const data =  await res.json();
-    removeThinking();
-    if(data.status === "ok"){
-      addMessage(data.user_text,"user");
-      addMessage(data.reply, "Joi");
-      if(data.audio_url)playAudio(audio_url);
-    }
-    else{
-      addMessage(data.detail || "some error occured", "system");
-    }
-  }
-  catch(e){
-    removeThinking();
-    addMessage("voice request failed", "system");
-  }
-}
-async function startRecording() {
-  const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-  mediaRecorder = new MediaRecorder(stream);
-  audioChunks = [];
-  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+  setLoading(true);
 
-  mediaRecorder.onstop = () =>{
-    const blob = new Blob(audioChunks, {type : "audio/wav"});
-    sendVoice(blob);
-    stream.getTracks().forEach(t => t.stop());
-  };
-  mediaRecorder.start();
-  isRecording = true;
-  micBtn.classList.add = "recording";
-  micBtn.textContent = "⏹";
+  const formData = new FormData();
+  formData.append("audio", blob, "recording.wav");
+
+  try {
+    const res = await fetch(`${API}/chat/voice`, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+    removeThinking();
+    setLoading(false);
+
+    if (data.status === "ok") {
+      addMessage(data.user_input, "user");
+      addMessage(data.reply, "joi");
+      if (data.audio_url) playAudio(data.audio_url);
+    } else {
+      addMessage(data.detail || "Could not process voice.", "system");
+    }
+  } catch (e) {
+    removeThinking();
+    addMessage("Voice request failed.", "system");
+  }
 }
+
+// ── MIC RECORDING ───────────────────────────────────────────────────────────
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: "audio/wav" });
+      sendVoice(blob);
+      stream.getTracks().forEach(t => t.stop());
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    micBtn.classList.add("recording");
+    micBtn.textContent = "⏹";
+  } catch (e) {
+    addMessage("Microphone access was denied or unavailable.", "system");
+  }
+}
+
 function stopRecording() {
+  if (!mediaRecorder) return;
   mediaRecorder.stop();
   isRecording = false;
   micBtn.classList.remove("recording");
   micBtn.textContent = "🎤";
 }
+
+// ── LOAD DOCUMENT ────────────────────────────────────────────────────────────
 async function loadDocument() {
   const filepath = filePathInput.value.trim();
-  const label = filepath.split("/").pop().replace(".pdf","");
-  if(!filepath)return;
-  try{
-    const res = await fetch(`${API}/load-document`,{
-      method: POST,
+  const label    = filepath.split("/").pop().replace(".pdf", "");
+  if (!filepath) return;
+
+  try {
+    const res = await fetch(`${API}/load-document`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({filepath,label})
-    })
+      body: JSON.stringify({ filepath, label })
+    });
     const data = await res.json();
-    addMessage(data.detail||data.message,"system");
+    addMessage(data.message || data.detail, "system");
     filePathInput.value = "";
-  }
-  catch(e){
-    addMessage("failed to load the document", "system");
+  } catch {
+    addMessage("Failed to load document.", "system");
   }
 }
+
 // ── EVENT LISTENERS ──────────────────────────────────────────────────────────
-sendBtn.addEventListener("click", sendText);
+sendBtn.addEventListener("click", (e) =>{
+  e.preventDefault();
+  sendText();
+});
 
 textInput.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) {
