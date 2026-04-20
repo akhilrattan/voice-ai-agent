@@ -3,7 +3,7 @@ import os
 from openai import OpenAI
 import json
 from web_search.tools import (
-    search_web, query_document , loaded_documents
+    search_web, query_document, get_loaded_documents
 )
 
 load_dotenv()  #loads .env file
@@ -69,21 +69,16 @@ TOOLS = [
 
 # ── SYSTEM PROMPT ─────────────────────────────────────────────────────────────
 def build_system_prompt():
-    """Build system prompt dynamically based on what is currently loaded."""
+    loaded = get_loaded_documents()
 
-#This is a list comprehension inside `join`. It loops through every item in `loaded_documents` and builds one line per document:
-
-    if loaded_documents:
-        doc_lines = "\n".join([
-            f"- '{label}' ({len(chunks)} chunks)"               
-            for label, chunks in loaded_documents.items()
-        ])
+    if loaded:
+        doc_lines = "\n".join([f"- '{label}'" for label in loaded])
         doc_section = f"Documents loaded and ready to query:\n{doc_lines}"
     else:
         doc_section = "No documents loaded yet."
 
     return f"""
-You are Joi, a sharp voice assistant.
+You are Aria, a sharp voice assistant.
 Keep every reply under 2 sentences.
 Never use bullet points or markdown — you are speaking out loud.
 Speak naturally and concisely.
@@ -104,8 +99,8 @@ Rules:
 messages = [{"role": "system", "content": build_system_prompt()}]
 
 def refresh_system_prompt():
-    """Update system prompt only if documents are loaded."""
-    if loaded_documents:
+    """Rebuild system prompt — ChromaDB always has current state."""
+    if get_loaded_documents():
         messages[0] = {"role": "system", "content": build_system_prompt()}
 
 # ── REPLY FUNCTIONS ───────────────────────────────────────────────────────────

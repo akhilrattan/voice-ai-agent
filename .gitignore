@@ -26,3 +26,5 @@ frontend/node_modules/
 # General
 .DS_Store
 *.wav
+
+echo "backend/chroma_db/"
