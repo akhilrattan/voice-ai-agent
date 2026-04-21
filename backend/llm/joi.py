@@ -5,6 +5,8 @@ import json
 from web_search.tools import (
     search_web, query_document, get_loaded_documents
 )
+from memory import get_all_facts, extract_and_save_facts, load_facts
+from vector_store import recall_memories
 
 load_dotenv()  #loads .env file
 
@@ -22,8 +24,8 @@ MODEL="openai/gpt-4o-mini"
 # A dictionary that maps tool name strings to actual Python functions. When the LLM says "call search_web with query=Bitcoin price",
 
 TOOL_MAP = {
-    "search_web":     lambda args: search_web(args["query"]),
-    "query_document": lambda args: query_document(args["label"], args["question"]),
+    "search_web": lambda args: search_web(args["query"]),
+    "query_document": lambda args: query_document(args["label"], args["question"])
 }
 
 TOOLS = [
@@ -35,10 +37,7 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The search query"
-                    }
+                    "query": {"type": "string", "description": "The search query"}
                 },
                 "required": ["query"]
             }
@@ -68,48 +67,68 @@ TOOLS = [
 ]
 
 # ── SYSTEM PROMPT ─────────────────────────────────────────────────────────────
-def build_system_prompt():
-    loaded = get_loaded_documents()
+def build_system_prompt(user_query=""):
+    """Build system prompt with loaded documents and memories."""
 
+    # Long term facts
+    facts = get_all_facts()
+    facts_section = f"What I know about you:\n{facts}" if facts else ""
+
+    # Semantic memory — relevant to current query
+    if user_query:
+        relevant_memories = recall_memories(user_query)
+        memory_section = f"Relevant context from memory:\n{relevant_memories}" if relevant_memories else ""
+    else:
+        memory_section = ""
+
+    # Loaded documents
+    loaded = get_loaded_documents()
     if loaded:
         doc_lines = "\n".join([f"- '{label}'" for label in loaded])
-        doc_section = f"Documents loaded and ready to query:\n{doc_lines}"
+        doc_section = f"Documents loaded:\n{doc_lines}"
     else:
         doc_section = "No documents loaded yet."
 
     return f"""
-You are Aria, a sharp voice assistant.
+You are Aria, a sharp voice assistant with persistent memory.
 Keep every reply under 2 sentences.
 Never use bullet points or markdown — you are speaking out loud.
 Speak naturally and concisely.
+
+{facts_section}
+
+{memory_section}
+
+{doc_section}
 
 You have two tools:
 - search_web: for current events, news, prices, weather
 - query_document: for questions about loaded PDF documents
 
-{doc_section}
-
 Rules:
-- Use query_document when user asks about a loaded document — use exact label
-- Use search_web for anything current or time-sensitive
+- Use query_document for loaded document questions
+- Use search_web for current or time-sensitive questions
 - Never make up answers — use a tool if unsure
+- Use memory context to personalise replies when relevant
 """
 
-# ── CONVERSATION HISTORY ──────────────────────────────────────────────────────
 messages = [{"role": "system", "content": build_system_prompt()}]
 
-def refresh_system_prompt():
-    """Rebuild system prompt — ChromaDB always has current state."""
-    if get_loaded_documents():
-        messages[0] = {"role": "system", "content": build_system_prompt()}
+def refresh_system_prompt(user_query=""):
+    """Rebuild system prompt with latest memory and documents."""
+    if get_loaded_documents() or load_facts():
+        messages[0] = {"role": "system", "content": build_system_prompt(user_query)}
+
 
 # ── REPLY FUNCTIONS ───────────────────────────────────────────────────────────
 def get_reply_non_streaming(user_text):
-    """Get full reply — handles tool use internally."""
+    """Get full reply — handles tool use and memory extraction."""
+    # Refresh prompt with memories relevant to this query
+    refresh_system_prompt(user_text)
+
     messages.append({"role": "user", "content": user_text})
 
     try:
-        # Call 1 — LLM decides whether to use a tool
         response = client.chat.completions.create(
             model=MODEL,
             messages=messages,
@@ -126,12 +145,10 @@ def get_reply_non_streaming(user_text):
             tool_name = tool_call.function.name
             tool_args = json.loads(tool_call.function.arguments)
 
-            print(f"[Joi is using tool: {tool_name}]")
+            print(f"[Aria is using tool: {tool_name}]")
 
-            # Run the right function from TOOL_MAP
             tool_result = TOOL_MAP[tool_name](tool_args)
 
-            # Add tool call and result to history
             messages.append(message)
             messages.append({
                 "role": "tool",
@@ -139,7 +156,6 @@ def get_reply_non_streaming(user_text):
                 "content": str(tool_result)
             })
 
-            # Call 2 — LLM answers using tool result
             response2 = client.chat.completions.create(
                 model=MODEL,
                 messages=messages,
@@ -151,9 +167,12 @@ def get_reply_non_streaming(user_text):
             messages.append({"role": "assistant", "content": reply})
 
         else:
-            # No tool needed — direct reply
             reply = message.content
             messages.append({"role": "assistant", "content": reply})
+
+        # Extract and save memorable facts in background
+        recent = f"User: {user_text}\nAria: {reply}"
+        extract_and_save_facts(recent, client, MODEL)
 
         return reply
 
@@ -172,7 +191,7 @@ def get_reply_streaming(user_text):
         if sentence:
             yield sentence
 
+
 def get_history():
     """Return full conversation history."""
     return messages
-

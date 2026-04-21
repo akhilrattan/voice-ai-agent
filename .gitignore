@@ -28,3 +28,5 @@ frontend/node_modules/
 *.wav
 
 echo "backend/chroma_db/"
+
+echo "backend/long_term_memory.json"
