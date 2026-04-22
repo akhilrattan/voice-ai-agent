@@ -5,7 +5,7 @@ import json
 from web_search.tools import (
     search_web, query_document, get_loaded_documents
 )
-from memory import get_all_facts, extract_and_save_facts, load_facts
+from memory import get_all_facts, extract_and_save_facts, load_facts, trim_messages
 from vector_store import recall_memories
 
 load_dotenv()  #loads .env file
@@ -173,6 +173,8 @@ def get_reply_non_streaming(user_text):
         # Extract and save memorable facts in background
         recent = f"User: {user_text}\nAria: {reply}"
         extract_and_save_facts(recent, client, MODEL)
+        #modifies the list in place — important because messages is a module-level list referenced elsewhere. Reassigning with messages = trim_messages(...) would create a new local variable and break the reference.
+        messages[:] = trim_messages(messages, client, MODEL)
 
         return reply
 
