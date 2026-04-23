@@ -1,11 +1,13 @@
 import os
+from dotenv import load_dotenv
 from datetime import date
 from tavily import TavilyClient
 from doc.documents import load_pdf, chunk_text
 from vector_store import store_chunks, query_documents, get_loaded_labels
 
-tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+load_dotenv() 
 
+tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
 def search_web(query):
     """Search the web for current information."""

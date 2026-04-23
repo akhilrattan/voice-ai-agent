@@ -1,20 +1,51 @@
 import numpy as np
-import sounddevice as sd
-from kokoro import KPipeline
-import threading
-import queue
 import soundfile as sf
 import os
+from kokoro import KPipeline
 
 print("Loading Kokoro TTS model...")
 pipeline = KPipeline(lang_code='a')
 print("TTS ready.")
 
+def generate_audio(text, output_path="response_audio.wav"):
+    """
+    Generate audio and save to file — for API use.
+    No speaker playback — works in Docker with no audio hardware.
+    Returns file path on success, None on failure.
+    """
+    if not text:
+        return None
+
+    try:
+        all_audio = []
+        for _, _, audio in pipeline(text, voice='af_heart', speed=1.0):
+            all_audio.append(np.array(audio))
+
+        if not all_audio:
+            return None
+
+        full_audio = np.concatenate(all_audio)
+        sf.write(output_path, full_audio, samplerate=24000)
+        return output_path
+
+    except Exception as e:
+        print(f"TTS generation error: {e}")
+        return None
+
+
 def speak(text):
-    """Generate and play audio locally — for terminal use."""
+    """
+    Play audio locally — terminal use only.
+    Imports sounddevice only when called — not at module level.
+    Fails gracefully in Docker where there's no audio hardware.
+    """
     if not text:
         return
     try:
+        import sounddevice as sd
+        import threading
+        import queue
+
         audio_queue = queue.Queue()
 
         def generate():
@@ -35,35 +66,5 @@ def speak(text):
         thread.join()
 
     except Exception as e:
-        print(f"TTS error: {e}")
-        print(f"Joi (text only): {text}")
-
-
-def generate_audio(text, output_path="response_audio.wav"):
-    """
-    Generate audio and save to file — for API use.
-    Returns the file path on success, None on failure.
-    """
-    if not text:
-        return None
-
-    try:
-        all_audio = []
-
-        for _, _, audio in pipeline(text, voice='af_heart', speed=1.0):
-            all_audio.append(np.array(audio))
-
-        if not all_audio:
-            return None
-
-        # Concatenate all chunks into one audio array
-        full_audio = np.concatenate(all_audio)
-
-        # Save to WAV file
-        sf.write(output_path, full_audio, samplerate=24000)
-
-        return output_path
-
-    except Exception as e:
-        print(f"TTS generation error: {e}")
-        return None
+        print(f"TTS playback error (expected in Docker): {e}")
+        print(f"Aria (text only): {text}")
