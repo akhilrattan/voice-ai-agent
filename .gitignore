@@ -1,32 +1,30 @@
-# ─── Python ─────────────────────────────
-backend__pycache__/
-backend*.pyc
-backend*.pyo
-backend*.pyd
-
-# ─── Virtual Environment ────────────────
-backend.env/
-
-# ─── Environment Variables ──────────────
-backend.env
-
-
-# ─── Logs / temp ────────────────────────
-*.log
-*.tmp
-
-models/
-# Python
+.venv/
+venv/
+env/
+backend/.venv/
 backend/venv/
-backend/audio_responses/
+backend/env/
 
-# Frontend
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
 frontend/node_modules/
 
-# General
-.DS_Store
+backend/audio_responses/
+backend/chroma_db/
+backend/long_term_memory.json
+models/
+
+*.log
+*.tmp
 *.wav
-
-echo "backend/chroma_db/"
-
-echo "backend/long_term_memory.json"
+*.mp3
+.DS_Store
