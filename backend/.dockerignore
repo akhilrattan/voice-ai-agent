@@ -6,4 +6,5 @@ chroma_db/
 audio_responses/
 long_term_memory.json
 *.wav
+*.pt
 .DS_Store
