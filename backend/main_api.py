@@ -72,11 +72,12 @@ def root():
 
 @app.get("/health")
 def health():
-    """to check if the app is alive"""
+    """Railway pings this to verify app is alive."""
     return {
         "status": "ok",
         "whisper": "loaded",
-        "tts": "loaded"
+        "tts": "loaded",
+        "version": "1.0.0"
     }
 
 @app.post("/chat/text")
