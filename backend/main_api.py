@@ -66,6 +66,7 @@ class LoadDocInput(BaseModel):
     filepath: str
     label: str
 
+
 @app.get("/")
 def root():
     return {"message" : "Joi api is running"}
@@ -75,9 +76,6 @@ def health():
     """Railway pings this to verify app is alive."""
     return {
         "status": "ok",
-        "whisper": "loaded",
-        "tts": "loaded",
-        "version": "1.0.0"
     }
 
 @app.post("/chat/text")
