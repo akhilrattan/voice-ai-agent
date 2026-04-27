@@ -292,8 +292,8 @@
   </div>
 </form>
 <script>
-  
-const API = "https://your-railway-url.up.railway.app";
+
+const API = "https://move-vacate-pending.ngrok-free.dev";
 
 // ── DOM REFERENCES ──────────────────────────────────────────────────────────
 const chatWindow   = document.getElementById("chat-window");
@@ -454,13 +454,17 @@ async function sendVoice(blob) {
 async function startRecording() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
+
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "audio/mp4";
+
+    mediaRecorder = new MediaRecorder(stream, { mimeType });
     audioChunks = [];
 
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-
     mediaRecorder.onstop = () => {
-      const blob = new Blob(audioChunks, { type: "audio/wav" });
+      const blob = new Blob(audioChunks, { type: mimeType });
       sendVoice(blob);
       stream.getTracks().forEach(t => t.stop());
     };
@@ -469,8 +473,13 @@ async function startRecording() {
     isRecording = true;
     micBtn.classList.add("recording");
     micBtn.textContent = "⏹";
+
   } catch (e) {
-    addMessage("Microphone access was denied or unavailable.", "system");
+    if (e.name === "NotAllowedError") {
+      addMessage("Mic permission denied. Please allow microphone access.", "system");
+    } else {
+      addMessage("Could not access microphone.", "system");
+    }
   }
 }
 
