@@ -1,0 +1,12 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.git/
+chroma_db/
+audio_responses/
+long_term_memory.json
+*.pdf
+*.wav
+.DS_Store

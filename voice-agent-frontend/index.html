@@ -1,294 +1,409 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17152c">
   <title>JOi — Voice AI Agent</title>
   <style>
-
-    /* ── RESET + BASE ───────────────────────────────────────────────── */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root {
+      color-scheme: dark;
+      --ink: #f8f4e8;
+      --muted: #aaa4bd;
+      --panel: #211e3b;
+      --panel-light: #2c2850;
+      --line: #100f20;
+      --purple: #a78bfa;
+      --cyan: #79e7df;
+      --yellow: #ffdc78;
+      --red: #ff7d8a;
+      --green: #8ef0b0;
+      --pixel: 0 4px 0 var(--line), 0 8px 0 rgba(10, 9, 22, .3);
+      font-family: "Courier New", ui-monospace, monospace;
     }
 
+    * { box-sizing: border-box; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     body {
-      background: #191931;
-      color: #f4f4f8;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background-color: #17152c;
+      background-image: linear-gradient(rgba(23,21,44,.3), rgba(23,21,44,.3)), linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px), radial-gradient(ellipse at 50% -20%, rgba(57,49,95,.18) 0, rgba(23,21,44,.28) 66%), url("assets/neon-hologram.png");
+      background-size: auto, 24px 24px, 24px 24px, auto, cover;
+      background-position: center, center, center, center, center;
+      background-attachment: fixed, fixed, fixed, fixed, fixed;
+      image-rendering: pixelated;
     }
 
-    /* ── HEADER ─────────────────────────────────────────────────────── */
-    header {
-      width: 100%;
-      max-width: 720px;
-      padding: 24px 20px 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+    .shell { width: min(900px, 100%); min-height: 100vh; margin: auto; padding: 24px 22px 22px; display: flex; flex-direction: column; }
 
-    .logo {
-      font-size: 23px;
-      font-weight: 700;
-      color: #a78bfa;
-      letter-spacing: -0.5px;
-    }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 3px solid rgba(16, 15, 32, .55); background: rgba(33, 30, 59, .22); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: var(--pixel), inset 0 1px 0 rgba(255,255,255,.12); }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .avatar { width: 42px; height: 42px; display: grid; place-items: center; border: 3px solid var(--line); background: var(--purple); color: #17152c; font-size: 24px; font-weight: 900; box-shadow: 3px 3px 0 var(--cyan); }
+    .brand h1 { margin: 0; font-size: clamp(20px, 4vw, 28px); letter-spacing: .12em; text-shadow: 0 0 12px rgba(167,139,250,.55); }
+    .eyebrow, .hint { color: var(--muted); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    .brand .eyebrow { margin: 4px 0 0; }
+    .connection { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .status-dot { width: 10px; height: 10px; background: var(--yellow); box-shadow: 0 0 0 3px rgba(255,220,120,.14); }
+    .status-dot.online { background: var(--green); box-shadow: 0 0 0 3px rgba(142,240,176,.14); }
+    .status-dot.offline { background: var(--red); box-shadow: 0 0 0 3px rgba(255,125,138,.14); }
 
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #34d399;
-    }
+    .main { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-top: 25px; border: 3px solid rgba(16, 15, 32, .55); background: rgba(25, 22, 48, .18); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: var(--pixel), inset 0 1px 0 rgba(255,255,255,.12); }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 3px solid rgba(16, 15, 32, .55); background: rgba(33, 30, 59, .22); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 1px 0 rgba(255,255,255,.1); }
+    .section-head h2 { margin: 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+    .section-head .hint { text-align: right; }
+    #chat-window { flex: 1; min-height: 300px; max-height: 58vh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 22px; background: rgba(18, 15, 39, .04); scrollbar-color: var(--purple) #17152c; }
+    .message { max-width: min(78%, 640px); padding: 12px 14px; border: 2px solid var(--line); line-height: 1.55; overflow-wrap: anywhere; box-shadow: 3px 3px 0 rgba(0,0,0,.25); }
+    .message.user { align-self: flex-end; color: #17152c; background: var(--cyan); }
+    .message.joi { align-self: flex-start; background: var(--panel-light); }
+    .message.system { align-self: center; max-width: 100%; padding: 5px 8px; border: 0; color: var(--muted); background: transparent; box-shadow: none; font-size: 12px; text-align: center; }
+    .message.error { color: #ffe3e5; background: #51283a; border-color: #9c405d; }
+    .message-label { display: block; margin-bottom: 5px; color: inherit; opacity: .72; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+    .audio-controls { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 11px; }
+    .mini-button { min-height: 34px; padding: 5px 9px; border: 2px solid var(--line); background: var(--panel); cursor: pointer; font-size: 11px; }
+    .thinking { display: flex; align-items: center; gap: 10px; align-self: flex-start; padding: 10px 12px; border: 2px solid var(--line); background: var(--panel); color: var(--muted); font-size: 12px; }
+    .thinking::before { content: ""; width: 8px; height: 8px; background: var(--yellow); animation: blink .7s steps(2, jump-none) infinite; }
+    @keyframes blink { 50% { opacity: .2; } }
 
-    .status-dot.offline {
-      background: #6b7280;
-    }
+    .utility { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .8fr); border-top: 3px solid var(--line); }
+    .utility-panel { min-width: 0; padding: 13px 16px; }
+    .utility-panel + .utility-panel { border-left: 3px solid var(--line); }
+    .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; color: var(--yellow); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    .doc-form { display: grid; grid-template-columns: 1fr 120px auto; gap: 7px; }
+    input, textarea { min-width: 0; color: var(--ink); background: #17152c; border: 2px solid #494365; border-radius: 0; }
+    input { min-height: 38px; padding: 8px 10px; font-size: 12px; }
+    input::placeholder, textarea::placeholder { color: #89839f; }
+    .doc-note { margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    #loaded-docs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .doc-chip { padding: 4px 7px; border: 1px solid #625783; color: var(--cyan); font-size: 10px; }
+    .api-form { display: flex; gap: 7px; }
+    .api-form input { flex: 1; }
+    .api-panel .panel-title { color: var(--red); }
+    .api-panel .api-form input { border-color: var(--red); }
+    .api-panel .api-form .pixel-button { background: var(--red); }
 
-    /* ── CHAT WINDOW ────────────────────────────────────────────────── */
-    #chat-window {
-      width: 100%;
-      max-width: 720px;
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
+    .composer { display: flex; align-items: flex-end; gap: 9px; padding: 14px 16px 16px; border-top: 3px solid var(--line); background: var(--panel); }
+    #text-input { flex: 1; min-height: 44px; max-height: 130px; padding: 11px 12px; resize: vertical; line-height: 1.45; }
+    .pixel-button { min-height: 44px; padding: 0 13px; border: 3px solid var(--line); background: var(--purple); color: #17152c; box-shadow: 0 4px 0 var(--line); cursor: pointer; font-weight: 900; }
+    .pixel-button:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
+    .pixel-button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+    .pixel-button:disabled { cursor: not-allowed; opacity: .55; }
+    #mic-btn { min-width: 48px; background: var(--panel-light); color: var(--cyan); font-size: 18px; }
+    #mic-btn.recording { color: #fff; background: #873c53; animation: blink .8s steps(2, jump-none) infinite; }
+    #send-btn { min-width: 84px; background: var(--yellow); }
+    .footer { display: flex; justify-content: space-between; gap: 10px; padding: 12px 3px 0; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+    #live-status { min-height: 1em; }
 
-    /* ── MESSAGES ───────────────────────────────────────────────────── */
-    .message {
-      max-width: 75%;
-      padding: 12px 16px;
-      border-radius: 16px;
-      font-size: 15px;
-      line-height: 1.5;
+    @media (max-width: 650px) {
+      .shell { padding: 12px 10px; }
+      .topbar { padding: 11px; }
+      .avatar { width: 36px; height: 36px; }
+      .connection { font-size: 10px; }
+      .main { margin-top: 18px; }
+      #chat-window { min-height: 280px; max-height: 52vh; padding: 15px 12px; }
+      .message { max-width: 90%; }
+      .utility { grid-template-columns: 1fr; }
+      .utility-panel + .utility-panel { border-top: 3px solid var(--line); border-left: 0; }
+      .doc-form { grid-template-columns: 1fr 1fr; }
+      .doc-form input:first-child { grid-column: 1 / -1; }
+      .doc-form button { grid-column: 1 / -1; }
+      .composer { gap: 7px; padding: 12px 10px; }
+      #text-input { padding: 10px 9px; font-size: 13px; }
+      #send-btn { min-width: 52px; padding: 0 8px; font-size: 12px; }
+      .footer { font-size: 9px; }
     }
-
-    .message.user {
-      background: #4f46e5;
-      color: #ffffff;
-      align-self: flex-end;
-      border-bottom-right-radius: 4px;
-    }
-
-    .message.joi {
-      background: #1e1e2e;
-      color: #e2e2e8;
-      align-self: flex-start;
-      border-bottom-left-radius: 4px;
-      border: 1px solid #2e2e42;
-    }
-
-    .message.system {
-      background: transparent;
-      color: #6b7280;
-      align-self: center;
-      font-size: 13px;
-      font-style: italic;
-    }
-
-    /* ── INPUT BAR ──────────────────────────────────────────────────── */
-    #input-bar {
-      width: 100%;
-      max-width: 720px;
-      padding: 16px 20px 28px;
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
-
-    #text-input {
-      flex: 1;
-      background: #1e1e2e;
-      border: 1px solid #2e2e42;
-      border-radius: 12px;
-      padding: 12px 16px;
-      color: #e2e2e8;
-      font-size: 15px;
-      resize: none;
-      outline: none;
-      min-height: 48px;
-      max-height: 120px;
-      font-family: inherit;
-    }
-
-    #text-input::placeholder {
-      color: #4b5563;
-    }
-
-    #text-input:focus {
-      border-color: #4f46e5;
-    }
-
-    /* ── BUTTONS ────────────────────────────────────────────────────── */
-    button {
-      cursor: pointer;
-      border: none;
-      border-radius: 12px;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.15s, transform 0.1s;
-    }
-
-    button:active {
-      transform: scale(0.95);
-    }
-
-    #send-btn {
-      width: 48px;
-      height: 48px;
-      background: #4f46e5;
-      color: white;
-      font-size: 18px;
-    }
-    
-    #mic-btn {
-      width: 48px;
-      height: 48px;
-      background: #1e1e2e;
-      border: 1px solid #2e2e42;
-      color: #a78bfa;
-      font-size: 20px;
-    }
-    #mic-btn:hover{
-        border-color : #9312d8;
-    }
-
-    #mic-btn.recording {
-      background: #7f1d1d;
-      border-color: #ef4444;
-      color: #ef4444;
-      animation: pulse 1s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.6; }
-    }
-
-    /* ── LOADING INDICATOR ──────────────────────────────────────────── */
-    .thinking {
-      display: flex;
-      gap: 4px;
-      padding: 12px 16px;
-      background: #1e1e2e;
-      border-radius: 16px;
-      border-bottom-left-radius: 4px;
-      border: 1px solid #2e2e42;
-      align-self: flex-start;
-    }
-
-    .thinking span {
-      width: 6px;
-      height: 6px;
-      background: #6b7280;
-      border-radius: 50%;
-      animation: bounce 1.2s infinite;
-    }
-
-    .thinking span:nth-child(2) { animation-delay: 0.2s; }
-    .thinking span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes bounce {
-      0%, 60%, 100% { transform: translateY(0); }
-      30%           { transform: translateY(-6px); }
-    }
-
-    /* ── FILE LOAD BAR ──────────────────────────────────────────────── */
-    #file-bar {
-      width: 100%;
-      max-width: 720px;
-      padding: 6px 20px 6px;
-      display: flex;
-      gap: 8px;
-    }
-
-    #file-path-input {
-      flex: 1;
-      background: #1e1e2e;
-      border: 1px solid #2e2e42;
-      border-radius: 10px;
-      padding: 8px 14px;
-      color: #e2e2e8;
-      font-size: 13px;
-      outline: none;
-      font-family: "SF Mono", monospace;
-    }
-
-    #file-path-input::placeholder {
-      color: #1265d8;
-    }
-
-    #file-path-input:focus {
-      border-color: #4f46e5;
-    }
-    
-    
-
-    #load-btn {
-      padding: 8px 16px;
-      background: #1e1e2e;
-      border: 1px solid #2e2e42;
-      border-radius: 10px;
-      color: #a78bfa;
-      font-size: 13px;
-      white-space: nowrap;
-    }
-
-    #load-btn:hover {
-      border-color:  #9312d8;
-    }
-
-    /* ── SCROLLBAR ──────────────────────────────────────────────────── */
-    #chat-window::-webkit-scrollbar { width: 4px; }
-    #chat-window::-webkit-scrollbar-track { background: transparent; }
-    #chat-window::-webkit-scrollbar-thumb { background: #2e2e42; border-radius: 2px; }
-
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
   </style>
 </head>
 <body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="avatar" aria-hidden="true">J</div>
+        <div><h1>JOi</h1><p class="eyebrow">voice companion // v1.0</p></div>
+      </div>
+      <div class="connection" role="status" aria-live="polite">
+        <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+        <span id="connection-label">Checking API</span>
+      </div>
+    </header>
 
-  <!-- HEADER -->
-  <header>
-    <span class="logo">Joi</span>
-    <div class="status-dot" id="status-dot"></div>
-  </header>
-
-  <!-- CHAT WINDOW -->
-  <div id="chat-window">
-    <div class="message system">Joi is ready. Speak or type below.</div>
+    <main class="main" aria-label="Joi conversation">
+      <div class="section-head"><h2>▸ Transmission log</h2><span class="hint">Enter to send · Shift+Enter for a new line</span></div>
+      <div id="chat-window" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions text">
+        <div class="message system">SYSTEM // Joi is ready. Send a message or start voice capture.</div>
+      </div>
+      <section class="utility" aria-label="Assistant settings and documents">
+        <div class="utility-panel">
+          <h2 class="panel-title">▸ PDF archive <span>upload from this device</span></h2>
+          <form class="doc-form" id="doc-form">
+            <label class="sr-only" for="pdf-file-input">Choose a PDF to load</label>
+            <input id="pdf-file-input" type="file" accept="application/pdf,.pdf" hidden>
+            <label class="sr-only" for="doc-label-input">Document label</label>
+            <input id="doc-label-input" type="text" placeholder="Label (optional)" autocomplete="off">
+            <button class="pixel-button" id="load-btn" type="button">SELECT &amp; LOAD PDF</button>
+          </form>
+          <p class="doc-note" id="pdf-file-name">Choose a PDF from your device. It will be uploaded to Joi for this session.</p>
+          <div id="loaded-docs" aria-label="Documents loaded this session"></div>
+        </div>
+        <div class="utility-panel api-panel">
+          <h2 class="panel-title">▸ API link</h2>
+          <form class="api-form" id="api-form">
+            <label class="sr-only" for="api-url">Backend API base URL</label>
+            <input id="api-url" type="url" placeholder="http://localhost:8000" value="http://localhost:8000">
+            <button class="pixel-button" type="submit">LINK</button>
+          </form>
+          <p class="doc-note">Set this to your deployed backend address. Saved in this browser.</p>
+        </div>
+      </section>
+      <div class="composer">
+        <button class="pixel-button" id="mic-btn" type="button" aria-label="Start voice recording" aria-pressed="false" title="Record a voice message">▣</button>
+        <label class="sr-only" for="text-input">Message to Joi</label>
+        <textarea id="text-input" placeholder="Type a message..." rows="1"></textarea>
+        <button class="pixel-button" id="send-btn" type="button">SEND ↵</button>
+      </div>
+    </main>
+    <footer class="footer"><span id="live-status" role="status" aria-live="polite">READY // awaiting input</span><span>PIXEL VOICE SYSTEM</span></footer>
   </div>
 
-  <!-- FILE LOAD BAR -->
-  <div id="file-bar">
-    <input
-      type="text"
-      id="file-path-input"
-      placeholder="/path/to/document.pdf"
-    />
-    <button id="load-btn">Load doc</button>
-  </div>
+  <script>
+    const chat = document.getElementById('chat-window');
+    const input = document.getElementById('text-input');
+    const sendButton = document.getElementById('send-btn');
+    const micButton = document.getElementById('mic-btn');
+    const liveStatus = document.getElementById('live-status');
+    const dot = document.getElementById('status-dot');
+    const connectionLabel = document.getElementById('connection-label');
+    const docs = document.getElementById('loaded-docs');
+    const storedApiUrl = localStorage.getItem('joi-api-url');
+    const apiInput = document.getElementById('api-url');
+    if (storedApiUrl) apiInput.value = storedApiUrl;
 
-  <!-- INPUT BAR -->
-  <div id="input-bar">
-    <button id="mic-btn" title="Hold to record">🎤</button>
-    <textarea
-      id="text-input"
-      placeholder="Type a message or press the mic..."
-      rows="1"
-    ></textarea>
-    <button id="send-btn" title="Send">↑</button>
-  </div>
+    let apiBase = apiInput.value.trim().replace(/\/$/, '');
+    let busy = false;
+    let recorder;
+    let recordingStream;
+    let recordingChunks = [];
+    let activeAudio = null;
 
+    function setStatus(message) { liveStatus.textContent = message; }
+    function setBusy(value) {
+      busy = value;
+      sendButton.disabled = value;
+      micButton.disabled = value || !navigator.mediaDevices || !window.MediaRecorder;
+      document.getElementById('load-btn').disabled = value;
+    }
+    function addMessage(kind, text, label) {
+      const node = document.createElement('div');
+      node.className = `message ${kind}`;
+      if (label) {
+        const heading = document.createElement('span');
+        heading.className = 'message-label';
+        heading.textContent = label;
+        node.appendChild(heading);
+      }
+      const body = document.createElement('span');
+      body.textContent = text;
+      node.appendChild(body);
+      chat.appendChild(node);
+      chat.scrollTop = chat.scrollHeight;
+      return node;
+    }
+    function setConnection(online) {
+      dot.classList.toggle('online', online);
+      dot.classList.toggle('offline', !online);
+      connectionLabel.textContent = online ? 'API online' : 'API offline';
+    }
+    async function checkHealth() {
+      try {
+        const response = await fetch(`${apiBase}/health`, { signal: AbortSignal.timeout(5000) });
+        if (!response.ok) throw new Error('Health check failed');
+        setConnection(true);
+      } catch (_) { setConnection(false); }
+    }
+    function showThinking() {
+      const node = document.createElement('div');
+      node.className = 'thinking';
+      node.setAttribute('role', 'status');
+      node.textContent = 'PROCESSING TRANSMISSION';
+      chat.appendChild(node);
+      chat.scrollTop = chat.scrollHeight;
+      return node;
+    }
+    function attachAudio(node, audioUrl) {
+      if (!audioUrl) return;
+      const controls = document.createElement('div');
+      controls.className = 'audio-controls';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'mini-button';
+      button.textContent = '▶ PLAY VOICE';
+      button.setAttribute('aria-label', 'Play Joi voice response');
+      const state = document.createElement('span');
+      state.textContent = 'VOICE READY';
+      let audio;
+      button.addEventListener('click', async () => {
+        if (!audio) {
+          audio = new Audio(new URL(audioUrl, `${apiBase}/`).href);
+          audio.addEventListener('ended', () => { button.textContent = '▶ REPLAY VOICE'; state.textContent = 'VOICE READY'; });
+          audio.addEventListener('error', () => { state.textContent = 'AUDIO UNAVAILABLE'; });
+        }
+        if (activeAudio && activeAudio !== audio) activeAudio.pause();
+        if (audio.paused) {
+          activeAudio = audio;
+          try { await audio.play(); button.textContent = '■ STOP VOICE'; state.textContent = 'PLAYING'; }
+          catch (_) { state.textContent = 'PLAYBACK BLOCKED'; }
+        } else {
+          audio.pause();
+          button.textContent = '▶ REPLAY VOICE';
+          state.textContent = 'PAUSED';
+        }
+      });
+      controls.append(button, state);
+      node.appendChild(controls);
+    }
+    async function requestReply(path, options, userText) {
+      if (busy) return;
+      if (userText) addMessage('user', userText, 'YOU');
+      setBusy(true);
+      setStatus('PROCESSING // contacting Joi...');
+      const thinking = showThinking();
+      try {
+        const response = await fetch(`${apiBase}${path}`, options);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.detail || `API returned ${response.status}`);
+        if (!payload.reply) throw new Error('The API returned an empty reply.');
+        if (payload.user_input && !userText) addMessage('user', payload.user_input, 'YOU // TRANSCRIBED');
+        const reply = addMessage('joi', payload.reply, 'JOI // RESPONSE');
+        attachAudio(reply, payload.audio_url);
+        setStatus(payload.audio_url ? 'READY // voice response attached' : 'READY // text response');
+        setConnection(true);
+      } catch (error) {
+        const message = error.name === 'TypeError' ? 'Could not reach the API. Check the backend URL and that the server is running.' : error.message;
+        addMessage('error', message, 'ERROR // TRANSMISSION FAILED');
+        setStatus('ERROR // check connection and try again');
+        setConnection(false);
+      } finally {
+        thinking.remove();
+        setBusy(false);
+        input.focus();
+      }
+    }
+    function sendText() {
+      const message = input.value.trim();
+      if (!message || busy) return;
+      input.value = '';
+      input.style.height = '';
+      requestReply('/chat/text', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message })
+      }, message);
+    }
+    sendButton.addEventListener('click', sendText);
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendText(); }
+    });
+    input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 130)}px`; });
+
+    async function stopRecordingAndSend() {
+      if (!recorder || recorder.state === 'inactive') return;
+      setStatus('RECORDING // finishing capture...');
+      recorder.stop();
+    }
+    micButton.addEventListener('click', async () => {
+      if (busy) return;
+      if (recorder && recorder.state === 'recording') { await stopRecordingAndSend(); return; }
+      if (!navigator.mediaDevices || !window.MediaRecorder) {
+        addMessage('error', 'Voice recording is not supported by this browser. Use a secure connection or send text instead.', 'VOICE UNAVAILABLE');
+        return;
+      }
+      try {
+        recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(type => MediaRecorder.isTypeSupported(type));
+        recorder = new MediaRecorder(recordingStream, mimeType ? { mimeType } : undefined);
+        recordingChunks = [];
+        recorder.addEventListener('dataavailable', event => { if (event.data.size) recordingChunks.push(event.data); });
+        recorder.addEventListener('stop', () => {
+          recordingStream.getTracks().forEach(track => track.stop());
+          recordingStream = null;
+          micButton.classList.remove('recording');
+          micButton.setAttribute('aria-pressed', 'false');
+          micButton.setAttribute('aria-label', 'Start voice recording');
+          const blob = new Blob(recordingChunks, { type: recorder.mimeType || 'audio/webm' });
+          if (!blob.size) { setStatus('READY // no audio captured'); return; }
+          const formData = new FormData();
+          const ext = blob.type.includes('mp4') ? 'm4a' : 'webm';
+          formData.append('audio', blob, `recording.${ext}`);
+          requestReply('/chat/voice', { method: 'POST', body: formData }, null);
+        }, { once: true });
+        recorder.start();
+        micButton.classList.add('recording');
+        micButton.setAttribute('aria-pressed', 'true');
+        micButton.setAttribute('aria-label', 'Stop recording and send voice message');
+        setStatus('RECORDING // click mic again to send');
+      } catch (error) {
+        const msg = error.name === 'NotAllowedError' ? 'Microphone access was blocked. Allow it in browser settings, then retry.' : `Could not start microphone: ${error.message}`;
+        addMessage('error', msg, 'MICROPHONE ERROR');
+        setStatus('READY // microphone unavailable');
+      }
+    });
+
+    const pdfFileInput = document.getElementById('pdf-file-input');
+    const pdfFileName = document.getElementById('pdf-file-name');
+    document.getElementById('load-btn').addEventListener('click', () => pdfFileInput.click());
+    pdfFileInput.addEventListener('change', async () => {
+      const file = pdfFileInput.files[0];
+      if (!file) return;
+      const labelInput = document.getElementById('doc-label-input');
+      const label = labelInput.value.trim() || file.name.replace(/\.pdf$/i, '');
+      pdfFileName.textContent = `Selected: ${file.name}`;
+      if (busy) return;
+      setBusy(true);
+      setStatus('ARCHIVE // loading PDF...');
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('label', label);
+        const response = await fetch(`${apiBase}/load-document`, {
+          method: 'POST', body: formData
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.detail || `API returned ${response.status}`);
+        addMessage('system', payload.message || `Document “${label}” loaded.`);
+        if (![...docs.children].some(chip => chip.textContent === label)) {
+          const chip = document.createElement('span'); chip.className = 'doc-chip'; chip.textContent = `▣ ${label}`; docs.appendChild(chip);
+        }
+        setStatus(`ARCHIVE // ${label} loaded`);
+        setConnection(true);
+      } catch (error) {
+        addMessage('error', error.name === 'TypeError' ? 'Could not reach the API while loading the PDF.' : error.message, 'ARCHIVE ERROR');
+        setStatus('ERROR // document not loaded');
+        setConnection(false);
+      } finally { setBusy(false); pdfFileInput.value = ''; }
+    });
+    document.getElementById('api-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const value = apiInput.value.trim().replace(/\/$/, '');
+      try {
+        const parsed = new URL(value);
+        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Use an HTTP or HTTPS URL.');
+        apiBase = value;
+        apiInput.value = value;
+        localStorage.setItem('joi-api-url', value);
+        setStatus('LINK // checking API...');
+        checkHealth();
+      } catch (_) {
+        addMessage('error', 'Enter a valid backend URL, such as https://your-api.example.com.', 'INVALID API URL');
+      }
+    });
+    checkHealth();
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      micButton.disabled = true;
+      micButton.title = 'Voice recording is unavailable in this browser or connection.';
+    }
+  </script>
 </body>
 </html>
